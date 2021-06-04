@@ -4,12 +4,14 @@
  */
 
 // feedback actuator 1
-#define A1_RPWM 3          // Arduino pin 3 to power controller RPWM pin 1
-#define A1_LPWM 5          // Arduino pin 5 to power controller LPWM pin 2
-#define A1_POT_IN A0       // arduino pin A0 to actuator feedack potentiometer
-#define A1_MAX_LIMIT 1023  // maximum distance actuator can travel without binding
-#define A1_MIN_LIMIT 30    // minimum distance actuator can travel without binding
-#define A1_SLOP 18         // +/- range for close enough
+#define A1_RPWM 3            // Arduino pin 3 to power controller RPWM pin 1
+#define A1_LPWM 5            // Arduino pin 5 to power controller LPWM pin 2
+#define A1_POT_IN A0         // arduino pin A0 to actuator feedack potentiometer
+#define A1_MAX_LIMIT 900     // maximum distance actuator can travel without binding
+#define A1_MIN_LIMIT 20      // minimum distance actuator can travel without binding
+#define A1_MAX_POT_VAL 900   // maximum pot value actuator can provide
+#define A1_MIN_POT_VAL 20    // minimum pot value actuator can provide
+#define A1_SLOP 25           // +/- range for close enough
 
 // potentiometer controller for actuator 1
 #define CONTROLLER_POT_FOR_A1 A3 // arduino analog pin for controller POT
@@ -36,8 +38,7 @@
 // potentiometer controller for actuator 3
 #define CONTROLLER_POT_FOR_A3 A5 // arduino analog pin for controller POT
 
-#define DEBUG false
-#define DEBUG_MOTOR_SPEED 225
+#define DEBUG true
 #define MOTOR_SPEED 225
 
 void setup() {
@@ -59,28 +60,23 @@ void updateActuatorPosition(int actuatorPotIn,
                             int actuatorSLOP,
                             int actuatorCalibratedMax,
                             int actuatorCalibratedMin,
+                            int actuatorMaxPotValue,
+                            int actuatorMinPotValue,
                             int controllerPotIn) {
 
-  int speed = MOTOR_SPEED;
-  if (DEBUG) {
-    speed = DEBUG_MOTOR_SPEED;
-  }
+  // todo: lower resolution so actuator doesn't grind to get to exact position? normalize to a scale of 1 to 100 or something instead of 0 to 1023                              
   
   int actuatorPotValue = analogRead(actuatorPotIn);
   int controllerPotValue = analogRead(controllerPotIn);
-
-  if (DEBUG) {
-    Serial.print("controllerPotValue: ");
-    Serial.println(controllerPotValue);
-    Serial.print("actuatorPotValue: ");
-    Serial.println(actuatorPotValue);
-  }
 
   // controller is reqeusting position that is beyond max
   if (controllerPotValue >= actuatorCalibratedMax && actuatorPotValue >= actuatorCalibratedMax) {
 
     if (DEBUG) {
       Serial.println("controller is reqeusting position that is beyond max...");
+      Serial.println(actuatorPotValue);
+      Serial.print("controllerPotValue: ");
+      Serial.println(controllerPotValue);
     }
 
     analogWrite(actuatorRPWM, 0);
@@ -92,18 +88,17 @@ void updateActuatorPosition(int actuatorPotIn,
 
     if (DEBUG) {
       Serial.println("controller is reqeusting position that is beyond min...");
+      Serial.println(actuatorPotValue);
+      Serial.print("controllerPotValue: ");
+      Serial.println(controllerPotValue);
     }
+    
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, 0);
   }
   
   // close enough, don't do anything
   else if (actuatorPotValue >= (controllerPotValue -actuatorSLOP) && actuatorPotValue <= (controllerPotValue +actuatorSLOP)) {
-
-    // close enough, don't do anything
-    if (DEBUG) {
-      Serial.println("close enough, don't do anything...");
-    }
 
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, 0);
@@ -118,27 +113,65 @@ void updateActuatorPosition(int actuatorPotIn,
   else if (actuatorPotValue > controllerPotValue) /*&& actuatorPotValue < (controllerPotValue +actuatorSLOP)*/ {
 
     if (DEBUG) {
-      Serial.println("handle retract...");
-    }
-
-    analogWrite(actuatorRPWM, speed); // todo: Speed
+      Serial.print("retracting, actuatorPotValue: ");
+      Serial.println(actuatorPotValue);
+      Serial.print("controllerPotValue: ");
+      Serial.println(controllerPotValue);
+    }    
+    
+    analogWrite(actuatorRPWM, MOTOR_SPEED);
     analogWrite(actuatorLPWM, 0);
 
-    //tesing... delay so it will overshoot a bit to prevent grinding
-    //delay(1);
+    // testing... stay here until retraction is completed
+    //    while (actuatorPotValue >= controllerPotValue && actuatorPotValue >= actuatorMinPotValue) {
+    //
+    //      Serial.print("retracting, actuatorPotValue: ");
+    //      Serial.println(actuatorPotValue);
+    //      Serial.print("controllerPotValue: ");
+    //      Serial.println(controllerPotValue);
+    //      
+    //      analogWrite(actuatorRPWM, MOTOR_SPEED);
+    //      analogWrite(actuatorLPWM, 0);
+    //      
+    //      actuatorPotValue = analogRead(actuatorPotIn);
+    //      delay(0);
+    //    }
+
+    // tesing... delay so it will overshoot a bit to prevent grinding
+    // delay(1);
   }
 
   // extend (not extended far enough)
   // todo: exponential response position response
-  else if (actuatorPotValue < controllerPotValue) {
+  else if (actuatorPotValue <= controllerPotValue) {
 
-    if (DEBUG) { Serial.println("handle extend..."); }
-    
+    if (DEBUG) {
+      Serial.print("extending, actuatorPotValue: ");
+      Serial.println(actuatorPotValue);
+      Serial.print("controllerPotValue: ");
+      Serial.println(controllerPotValue);
+    }
+
     analogWrite(actuatorRPWM, 0);
-    analogWrite(actuatorLPWM, speed); // todo: Speed    
+    analogWrite(actuatorLPWM, MOTOR_SPEED);
+
+    // testing... stay here until extension is complete
+    //    while (actuatorPotValue <= controllerPotValue && actuatorPotValue <= actuatorMaxPotValue) {
+    //
+    //      Serial.print("extending, actuatorPotValue: ");
+    //      Serial.println(actuatorPotValue);
+    //      Serial.print("controllerPotValue: ");
+    //      Serial.println(controllerPotValue);
+    //
+    //      analogWrite(actuatorRPWM, 0);
+    //      analogWrite(actuatorLPWM, MOTOR_SPEED);
+    //    
+    //      actuatorPotValue = analogRead(actuatorPotIn);
+    //      delay(0);
+    //    }
 
     //tesing... delay so it will overshoot a bit to prevent grinding
-    //delay(1);
+    // delay(1);
   }
 
   // stop, not sure how we got here?
@@ -164,16 +197,10 @@ void loop() {
                            A1_SLOP,
                            A1_MAX_LIMIT,
                            A1_MIN_LIMIT,
+                           A1_MAX_POT_VAL,
+                           A1_MIN_POT_VAL,
                            CONTROLLER_POT_FOR_A1);
   }
-
-  if (DEBUG) {
-    //delay(1);
-  }
-  else{
-    //delay(1);
-  }
-
 
   /* ***sinulate preset location.. which is a value from 0 to 512, the positive side of the range of the potentiometer
   int presetLocation = 330;
