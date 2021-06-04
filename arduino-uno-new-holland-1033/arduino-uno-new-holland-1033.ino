@@ -7,10 +7,10 @@
 #define A1_RPWM 3            // Arduino pin 3 to power controller RPWM pin 1
 #define A1_LPWM 5            // Arduino pin 5 to power controller LPWM pin 2
 #define A1_POT_IN A0         // arduino pin A0 to actuator feedack potentiometer
-#define A1_MAX_LIMIT 900     // maximum distance actuator can travel without binding
-#define A1_MIN_LIMIT 30      // minimum distance actuator can travel without binding
+#define A1_MAX_LIMIT 900     // maximum distance actuator can travel without binding (must be less than or equal to A1_MAX_POT_VAL) 
+#define A1_MIN_LIMIT 30      // minimum distance actuator can travel without binding (must be greater than or equal to A1_MIN_POT_VAL)
 #define A1_MAX_POT_VAL 900   // maximum pot value actuator can provide
-#define A1_MIN_POT_VAL 100   // minimum pot value actuator can provide
+#define A1_MIN_POT_VAL 30    // minimum pot value actuator can provide
 #define A1_SLOP 20           // +/- range for close enough
 
 // potentiometer controller for actuator 1
