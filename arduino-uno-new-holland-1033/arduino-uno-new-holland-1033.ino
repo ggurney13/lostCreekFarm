@@ -7,9 +7,9 @@
 #define A1_RPWM 3          // Arduino pin 3 to power controller RPWM pin 1
 #define A1_LPWM 5          // Arduino pin 5 to power controller LPWM pin 2
 #define A1_POT_IN A0       // arduino pin A0 to actuator feedack potentiometer
-#define A1_MAX_LIMIT 700   // maximum distance actuator can travel without binding
-#define A1_MIN_LIMIT 300   // minimum distance actuator can travel without binding
-#define A1_SLOP 30         // +/- range for close enough
+#define A1_MAX_LIMIT 1023  // maximum distance actuator can travel without binding
+#define A1_MIN_LIMIT 30    // minimum distance actuator can travel without binding
+#define A1_SLOP 18         // +/- range for close enough
 
 // potentiometer controller for actuator 1
 #define CONTROLLER_POT_FOR_A1 A3 // arduino analog pin for controller POT
@@ -36,9 +36,9 @@
 // potentiometer controller for actuator 3
 #define CONTROLLER_POT_FOR_A3 A5 // arduino analog pin for controller POT
 
-#define DEBUG true
-#define DEBUG_MOTOR_SPEED 20
-#define MOTOR_SPEED 200
+#define DEBUG false
+#define DEBUG_MOTOR_SPEED 225
+#define MOTOR_SPEED 225
 
 void setup() {
 
@@ -98,7 +98,7 @@ void updateActuatorPosition(int actuatorPotIn,
   }
   
   // close enough, don't do anything
-  else if (actuatorPotValue > (controllerPotValue -actuatorSLOP) && actuatorPotValue < (controllerPotValue +actuatorSLOP)) {
+  else if (actuatorPotValue >= (controllerPotValue -actuatorSLOP) && actuatorPotValue <= (controllerPotValue +actuatorSLOP)) {
 
     // close enough, don't do anything
     if (DEBUG) {
@@ -115,7 +115,7 @@ void updateActuatorPosition(int actuatorPotIn,
    * For input and output ranges that go from -1 to +1, the equation is: output = ( (1 - factor) x input3 ) + ( factor x input )
    * Source https://www.physicsforums.com/threads/equation-required-to-calculate-exponential-rate.524002/
    */  
-  else if (actuatorPotValue > controllerPotValue) {
+  else if (actuatorPotValue > controllerPotValue) /*&& actuatorPotValue < (controllerPotValue +actuatorSLOP)*/ {
 
     if (DEBUG) {
       Serial.println("handle retract...");
@@ -123,7 +123,9 @@ void updateActuatorPosition(int actuatorPotIn,
 
     analogWrite(actuatorRPWM, speed); // todo: Speed
     analogWrite(actuatorLPWM, 0);
-    
+
+    //tesing... delay so it will overshoot a bit to prevent grinding
+    //delay(1);
   }
 
   // extend (not extended far enough)
@@ -134,6 +136,9 @@ void updateActuatorPosition(int actuatorPotIn,
     
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, speed); // todo: Speed    
+
+    //tesing... delay so it will overshoot a bit to prevent grinding
+    //delay(1);
   }
 
   // stop, not sure how we got here?
@@ -163,10 +168,10 @@ void loop() {
   }
 
   if (DEBUG) {
-    delay(500);
+    //delay(1);
   }
   else{
-    delay(50);
+    //delay(1);
   }
 
 
