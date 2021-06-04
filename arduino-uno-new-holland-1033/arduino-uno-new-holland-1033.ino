@@ -171,6 +171,8 @@ void updateActuatorPosition(int actuatorPotIn,
 void loop() {
 
   // todo: ***STARTUP CALIBRATION***  
+  //
+  // determine: 1) min and max throws without binding, and 2) min and max pot readings from actuator
 
   // ****NORNMAL LOOP****
   {
