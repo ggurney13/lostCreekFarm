@@ -8,35 +8,13 @@
 #define A1_LPWM 5            // Arduino pin 5 to power controller LPWM pin 2
 #define A1_POT_IN A0         // arduino pin A0 to actuator feedack potentiometer
 #define A1_MAX_LIMIT 900     // maximum distance actuator can travel without binding
-#define A1_MIN_LIMIT 20      // minimum distance actuator can travel without binding
+#define A1_MIN_LIMIT 30      // minimum distance actuator can travel without binding
 #define A1_MAX_POT_VAL 900   // maximum pot value actuator can provide
-#define A1_MIN_POT_VAL 20    // minimum pot value actuator can provide
-#define A1_SLOP 25           // +/- range for close enough
+#define A1_MIN_POT_VAL 100   // minimum pot value actuator can provide
+#define A1_SLOP 20           // +/- range for close enough
 
 // potentiometer controller for actuator 1
 #define CONTROLLER_POT_FOR_A1 A3 // arduino analog pin for controller POT
-
-// feedback actuator 2
-#define A2_RPWM 6          // Arduino pin 6 to power controller RPWM pin 1
-#define A2_LPWM 9          // Arduino pin 9 to power controller LPWM pin 2
-#define A2_POT_IN A1       // arduino pin A1 to actuator feedack potentiometer
-#define A2_MAX_LIMIT 700   // maximum distance actuator can travel without binding
-#define A2_MIN_LIMIT 300   // minimum distance actuator can travel without binding
-#define A2_SLOP 30         // +/- range for close enough
-
-// potentiometer controller for actuator 2
-#define CONTROLLER_POT_FOR_A2 A4 // arduino analog pin for controller POT
-
-// feedback actuator 3
-#define A3_RPWM 10         // Arduino pin 10 to power controller RPWM pin 1
-#define A3_LPWM 11         // Arduino pin 11 to power controller LPWM pin 2
-#define A3_POT_IN A2       // arduino pin A2 to actuator feedack potentiometer
-#define A3_MAX_LIMIT 700   // maximum distance actuator can travel without binding
-#define A3_MIN_LIMIT 300   // minimum distance actuator can travel without binding
-#define A3_SLOP 30         // +/- range for close enough
-
-// potentiometer controller for actuator 3
-#define CONTROLLER_POT_FOR_A3 A5 // arduino analog pin for controller POT
 
 #define DEBUG true
 #define MOTOR_SPEED 225
@@ -64,16 +42,21 @@ void updateActuatorPosition(int actuatorPotIn,
                             int actuatorMinPotValue,
                             int controllerPotIn) {
 
-  // todo: lower resolution so actuator doesn't grind to get to exact position? normalize to a scale of 1 to 100 or something instead of 0 to 1023                              
+  // todo: lower resolution so actuator doesn't grind to get to exact position? normalize to a scale of 1 to 100 or something instead of 0 to 1023     
   
   int actuatorPotValue = analogRead(actuatorPotIn);
   int controllerPotValue = analogRead(controllerPotIn);
+
+  // map controller range to actuator range, example: 1023 on controller maps to 900 actuator, that way we can use the full motion of the controller
+  controllerPotValue = map(controllerPotValue,0,1023,actuatorCalibratedMin,actuatorCalibratedMax);
+
+  /* not needed with mapping above?
 
   // controller is reqeusting position that is beyond max
   if (controllerPotValue >= actuatorCalibratedMax && actuatorPotValue >= actuatorCalibratedMax) {
 
     if (DEBUG) {
-      Serial.println("controller is reqeusting position that is beyond max...");
+      Serial.println("controller is reqeusting position that is beyond max, actuatorPotValue: ");
       Serial.println(actuatorPotValue);
       Serial.print("controllerPotValue: ");
       Serial.println(controllerPotValue);
@@ -87,7 +70,7 @@ void updateActuatorPosition(int actuatorPotIn,
   else if (controllerPotValue <= actuatorCalibratedMin && actuatorPotValue <= actuatorCalibratedMin) {
 
     if (DEBUG) {
-      Serial.println("controller is reqeusting position that is beyond min...");
+      Serial.println("controller is reqeusting position that is beyond min, actuatorPotValue: ");
       Serial.println(actuatorPotValue);
       Serial.print("controllerPotValue: ");
       Serial.println(controllerPotValue);
@@ -96,9 +79,10 @@ void updateActuatorPosition(int actuatorPotIn,
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, 0);
   }
+  */
   
   // close enough, don't do anything
-  else if (actuatorPotValue >= (controllerPotValue -actuatorSLOP) && actuatorPotValue <= (controllerPotValue +actuatorSLOP)) {
+  if (actuatorPotValue >= (controllerPotValue -actuatorSLOP) && actuatorPotValue <= (controllerPotValue +actuatorSLOP)) {
 
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, 0);
