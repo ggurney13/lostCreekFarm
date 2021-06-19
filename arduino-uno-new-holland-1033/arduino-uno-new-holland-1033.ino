@@ -14,6 +14,7 @@
 #define A1_MAX_POT_VAL 900   // maximum pot value actuator can provide
 #define A1_MIN_POT_VAL 30    // minimum pot value actuator can provide
 #define A1_SLOP 5            // +/- range for close enough
+#define LATCH_POINT 250      // latch point for retracting
 
 // potentiometer controller for actuator 1
 #define CONTROLLER_POT_FOR_A1 A3 // arduino analog pin for controller POT
@@ -34,6 +35,8 @@ void setup() {
   Serial.begin(9600);
 }
 
+boolean latchFlag = false;
+
 void updateActuatorPosition(int actuatorPotIn,
                             int actuatorRPWM,
                             int actuatorLPWM,
@@ -47,12 +50,15 @@ void updateActuatorPosition(int actuatorPotIn,
   int actuatorPotValue = analogRead(actuatorPotIn);
   int controllerPotValue = analogRead(controllerPotIn);
 
+  //Serial.print("controllerPotValue: ");
+  //Serial.println(controllerPotValue);
+
   // map controller range to actuator range, example: 1023 on controller maps to 900 actuator, that way we can use the full motion of the controller
   // controllerPotValue = map(controllerPotValue,actuatorMinPotValue,actuatorMaxPotValue,actuatorCalibratedMin,actuatorCalibratedMax);
   
   // motion range range is: 640, min: 30, max: 900 so: 870/2 is center, then add -/+ 320 to both sides, 435+320=755 max and 435-320=115 min
   controllerPotValue = map(controllerPotValue,0,1023,115,755);
-  
+
   // close enough, don't do anything
   if (actuatorPotValue >= (controllerPotValue -actuatorSLOP) && actuatorPotValue <= (controllerPotValue +actuatorSLOP)) {
 
@@ -78,46 +84,67 @@ void updateActuatorPosition(int actuatorPotIn,
     // make speed a function of how close we are to the target value
     long speed = MOTOR_SPEED;
     long diff = actuatorPotValue - controllerPotValue;
-    if (diff < 50) {
-      speed = map(diff,1,50,125,MOTOR_SPEED);
+    if (diff < 75) {
+      speed = map(diff,1,75,120,MOTOR_SPEED);
     }
 
-//    Serial.print("retract speed: ");
-//    Serial.println(speed);
+    //Serial.print("retract speed: ");
+    //Serial.println(speed);
+
+    // set latch to true if retracted to latch point
+    if (actuatorPotValue < LATCH_POINT) {
+      Serial.println("set latchFlag TRUE");
+      latchFlag = true;
+    }
     
-    analogWrite(actuatorRPWM, speed /*MOTOR_SPEED*/);
+    analogWrite(actuatorRPWM, speed);
     analogWrite(actuatorLPWM, 0);
   }
 
   // extend (not extended far enough)
   else if (actuatorPotValue < controllerPotValue) {
 
-    if (DEBUG) {
-      Serial.print("extending, actuatorPotValue: ");
-      Serial.println(actuatorPotValue);
-      Serial.print("controllerPotValue: ");
-      Serial.println(controllerPotValue);
+    // unlatch
+    if (latchFlag == true && controllerPotValue > 512) {
+      latchFlag = false;
+      //Serial.print("controllerPotValue: ");
+      //Serial.println(controllerPotValue);
     }
 
-    // make speed a function of how close we are to the target value
-    long speed = MOTOR_SPEED;
-    long diff = controllerPotValue - actuatorPotValue;;
-    if (diff < 50) {
-      speed = map(diff,1,50,125,MOTOR_SPEED);
-    } 
+    // don't extend actuator beyond LATCH_POINT
+    if (latchFlag == true && actuatorPotValue > LATCH_POINT) {
 
-//    Serial.print("retract speed: ");
-//    Serial.println(speed);
-
-    analogWrite(actuatorRPWM, 0);
-    analogWrite(actuatorLPWM, speed /*MOTOR_SPEED*/);
+      // stop!!!
+      analogWrite(actuatorRPWM, 0);
+      analogWrite(actuatorLPWM, 0);
+    }
+    else {
+      
+      if (DEBUG) {
+        Serial.print("extending, actuatorPotValue: ");
+        Serial.println(actuatorPotValue);
+        Serial.print("controllerPotValue:          ");
+        Serial.println(controllerPotValue);
+      }
+  
+      // make speed a function of how close we are to the target value
+      long speed = MOTOR_SPEED;
+      long diff = controllerPotValue - actuatorPotValue;;
+      if (diff < 75) {
+        speed = map(diff,1,75,120,MOTOR_SPEED);
+      } 
+  
+      //Serial.print("retract speed: ");
+      //Serial.println(speed);
+  
+      analogWrite(actuatorRPWM, 0);
+      analogWrite(actuatorLPWM, speed);
+    }
   }
 
   // stop, not sure how we got here?
   else {
-
-   Serial.println("***ERROR!!! UNHANDLED CONDITION!***");
-    
+    Serial.println("***ERROR!!! UNHANDLED CONDITION!***");    
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, 0); 
   }
