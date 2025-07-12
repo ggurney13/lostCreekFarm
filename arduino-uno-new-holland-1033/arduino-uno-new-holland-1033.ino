@@ -7,10 +7,10 @@
 #define A1_RPWM 3            // Arduino pin 3 to power controller RPWM pin 1
 #define A1_LPWM 5            // Arduino pin 5 to power controller LPWM pin 2
 #define A1_POT_IN A0         // arduino pin A0 to actuator feedack potentiometer
-#define A1_MAX_LIMIT 749     // maximum distance actuator can travel without binding (must be less than or equal to A1_MAX_POT_VAL)
-#define A1_MIN_LIMIT 124     // minimum distance actuator can travel without binding (must be greater than or equal to A1_MIN_POT_VAL)
-#define A1_MAX_POT_VAL 749   // maximum position value actuator can provide
-#define A1_MIN_POT_VAL 124   // minimum position value actuator can provide
+#define A1_MAX_LIMIT 630     // maximum distance actuator can travel without binding
+#define A1_MIN_LIMIT 270     // minimum distance actuator can travel without binding
+#define A1_MAX_POT_VAL 943   // maximum position value actuator can provide (not used below, for reference only)
+#define A1_MIN_POT_VAL 15    // minimum position value actuator can provide (not used below, for reference only)
 #define A1_SLOP 5            // +/- range for close enough
 
 // potentiometer controller for actuator 1
@@ -35,8 +35,6 @@ void setup() {
   Serial.begin(9600);
 }
 
-boolean latchFlag = false;
-
 void updateActuatorPosition(int actuatorPotIn,
                             int actuatorRPWM,
                             int actuatorLPWM,
@@ -51,17 +49,12 @@ void updateActuatorPosition(int actuatorPotIn,
   int controllerPotValue = analogRead(controllerPotIn);
   int unmappedControlerPotValue = controllerPotValue;
 
-  // map controller range to actuator range, example: 1023 on controller maps to 755 on actuator, that way we can use the full motion of the controller
-  // note that we can't use the full range of motion on the actuator, the motion range on the 1033 pick-up lever matches the actuator range from 115 to 755
-  //
-  // total motion range range for 1033 pick-up is: 640. The min value provided by actuator is: 30 and the value provided by atuator is: 900
-  // therefore: 870/2 is center (which is at 435) on the actuator, then add -/+ 320 to both sides of center then we have 435+320=755 max for
-  // actuator and 435-320=115 min for actuator. Map the controller's full range (0,1023) over the range of the actuator (115 to 755)
-  controllerPotValue = map(controllerPotValue,0,1023,115,755);
+  // map the controller range to actuator range, for example: 1023 on controller maps to A1_MAX_LIMIT on actuator,
+  // that way we can use the full motion of the controller without causing the actuator to bind
+  controllerPotValue = map(controllerPotValue,0,1023,actuatorCalibratedMin,actuatorCalibratedMax);
 
   // close enough, don't do anything
   if (actuatorPotValue >= (controllerPotValue -actuatorSLOP) && actuatorPotValue <= (controllerPotValue +actuatorSLOP)) {
-
     analogWrite(actuatorRPWM, 0);
     analogWrite(actuatorLPWM, 0);
   }
